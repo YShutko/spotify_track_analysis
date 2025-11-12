@@ -31,17 +31,66 @@ The dataset consists of the following columns:
 time_signature: Musical meter (e.g. 4 = 4/4 time).
 track_genre: Musical genre classification of the track.
 
+## Business Problem and Data Science Objectives overview
+
+The Spotify dataset contains detailed track-level metadata, including musical attributes like energy, valence (positivity), tempo, danceability, loudness, and genre. The goal is to leverage this data to:
+* Understand what makes a song popular
+* Enable mood-based playlist curation
+* Build predictive and recommendation tools for artists and curators.
+  
 ## Business Requirements
-1. **Understand Key Drivers of Song Popularity**  
-   Analyze which audio features (e.g., danceability, energy, tempo, valence) have the strongest influence on a song’s popularity score.
-2. **Classify Songs by Mood and Energy**  
-   Segment songs into categories such as *Happy*, *Sad*, *Chill*, or *High Energy* using features like valence, energy, and tempo.
-3. **Genre-Level Analysis**  
-   Identify trends across different music genres — for example, which genres are more danceable, louder, or more acoustic.
-4. **Support Playlist Curation**  
-   Enable smarter playlist generation by grouping tracks based on shared characteristics, allowing users to build playlists for specific moods or activities.
-5. **Data-Driven Music Recommendations**  
-   Establish the foundation for future ML-powered recommendations by exploring the relationship between track features and user listening behavior.
+1. Understand Key Drivers of Song Popularity
+Objective: Stakeholders want to identify which musical and structural features (e.g., energy, valence, tempo, duration, genre) most strongly influence a track’s popularity score.  
+Approach:  
+* Perform exploratory data analysis (EDA) to study correlations between features and popularity.
+* Build feature importance models (e.g., Random Forest Regressor, XGBoost).
+* Visualize top predictive features to communicate key insights.
+Deliverables:
+* “Top 10 Features Influencing Popularity” chart
+* Feature importance report with actionable insights (e.g., “Energy and Valence increase popularity by +12 points”).
+
+2️. Classify Songs by Mood and Energy
+Objective: The product team needs a system to categorize songs by mood (e.g., happy, sad, energetic, calm) for playlist generation and UX personalization.
+Approach:
+* Use valence (positivity) and energy as key emotional indicators.
+* Create mood labels using thresholds or unsupervised clustering:
+* High valence + high energy → Happy/Energetic
+* Low valence + low energy → Calm/Melancholic
+* Train a mood classification model (Logistic Regression or Random Forest).
+Deliverables:
+* Mood classification categories and definitions
+* Interactive “Mood Map” visualization of tracks by valence/energy
+
+3️. Genre-Level Analysis
+Objective: Provide the marketing and analytics teams with insights into genre performance and audience preferences.
+Approach:
+* Aggregate and visualize average popularity by genre
+* Identify top and emerging genres
+* Use clustering to reveal genre subgroups with similar sound characteristics
+Deliverables:
+* Genre trend dashboards (avg. popularity, tempo, valence)
+* Heatmaps comparing genre vs. energy and mood
+
+4️. Support Playlist Curation
+Objective: Help users and curators find and group similar tracks automatically for playlist creation.
+Approach:
+* Use K-Means clustering or cosine similarity on normalized audio features (energy, danceability, tempo, etc.)
+* Build a “Find Similar Songs” function that recommends tracks closest in feature space.
+Deliverables:
+* “Song Similarity Map” visualization
+* Playlist recommendation demo
+
+5️. Data-Driven Music Recommendations
+Objective: Enable producers and managers to make data-informed creative decisions before releasing songs.
+Approach:
+* Train a regression model to predict popularity score (0–100) for new songs.
+* Generate actionable insights such as:
+* Predicted popularity
+* Feature-level improvement suggestions (e.g., +10 energy = +6 popularity points)
+* Benchmarking against top songs in the same genre
+Deliverables:
+* AI-powered “Track Optimizer” dashboard
+* Predictive model for new song success
 
 
 ## Hypothesis
@@ -89,7 +138,7 @@ This project utilizes publicly available Spotify track data for the purpose of e
 ## Development Roadmap
 
 ## Planning:
-* GitHub [Project Board]([https://github.com/users/YShutko/projects/3](https://github.com/users/YShutko/projects/6)) was used to plan and track the progress.
+* GitHub [Project Board](https://github.com/users/YShutko/projects/6) was used to plan and track the progress.
 
 ## Main Data Analysis Libraries
 * Pandas
