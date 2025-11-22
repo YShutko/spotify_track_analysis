@@ -38,15 +38,66 @@ Gradio on local host: Running on local [URL](http://127.0.0.1:7865)
   * track_genre: Musical genre classification of the track.
 
 ## Repository Layout
-- [Spotify_track_analysis.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/notebooks/Spotify_track_analysis.ipynb) – EDA, cleaning, feature exploration, visualizations (correlations, genre summaries, energy/valence scatter, duration vs popularity).
-- [ml_models.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/notebooks/ml_models.ipynb) – Feature engineering and model training for popularity prediction.
-- [ipywidgets.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/ipywidgets.ipynb) – In-notebook prediction widget (sliders/dropdowns) using downloaded models.
-- [gradio.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/gradio.ipynb) – Gradio UI for quick web demos (multiple downloadable models).
-- [flagged](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/.gradio/flagged/dataset1.csv) – Sample flagged input from a previous Gradio run.
+* [Spotify_track_analysis.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/notebooks/Spotify_track_analysis.ipynb) – EDA, cleaning, feature exploration, visualizations (correlations, genre summaries, energy/valence scatter, duration vs popularity).
+* [ml_models.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/notebooks/ml_models.ipynb) – Feature engineering and model training for popularity prediction.
+* [ipywidgets.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/ipywidgets.ipynb) – In-notebook prediction widget (sliders/dropdowns) using downloaded models.
+* [gradio.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/gradio.ipynb) – Gradio UI for quick web demos (multiple downloadable models).
+* [flagged](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/.gradio/flagged/dataset1.csv) – Sample flagged input from a previous Gradio run.
   
 ## Plot Highlights
-- Correlation Heatmap:
+* Pairplot:
+  <img src="plots/pairplot.png" width="600">
+Key Insights:
+1. Popularity shows no strong linear relationships
+* Scatterplots with popularity form wide clouds → no clear trend.
+* Confirms that simple linear models won’t work well.
+
+2. Strong feature relationships exist between audio characteristics
+* Energy ↗ Loudness (clear strongest correlation)
+* Energy ↗ Danceability
+* Danceability ↗ Valence
+These justify creating interaction features (energy × valence, loudness × danceability).
+
+3. Several features are highly skewed
+* Acousticness, instrumentalness, and speechiness show uneven distributions.
+* They add information but are not dominant predictors.
+
+4. Some features carry very little useful signal
+* Key, mode, and time_signature appear as vertical stripes (discrete, low-variance).
+* Correct choice to drop or de-prioritize them.
+
+5. Duration and tempo show only weak relationships
+* Scatterplots reveal noisy clouds → limited influence on popularity.  
+
+*  Correlation Heatmap:
 <img src="plots/correlation_heatmap.png" width="600">
+
+Overall Interpretation: 
+The heatmap illustrates the relationship between different audio features of songs, with values ranging from –1 (strong negative correlation) to +1 (strong positive correlation). Most correlations are weak, indicating that the features are largely independent; however, there are a few notable strong relationships worth highlighting.
+
+* Key Positive Correlations (Strong/Moderate)
+    * Feature Pair	Correlation	Interpretation
+    * Energy ↔ Loudness	0.76	Louder tracks tend to have more energy.
+    * Danceability ↔ Energy	0.28	More energetic tracks are slightly more danceable.
+    * Valence ↔ Danceability	0.48	More danceable songs tend to have happier/positive vibes.
+    * Liveness ↔ Acousticness	0.21	More live-sounding tracks tend to be more acoustic.
+* Strong Negative Correlations
+    * Feature Pair	Correlation	Interpretation
+    * Acousticness ↔ Energy	–0.73	Highly acoustic songs are much less energetic.
+    * Acousticness ↔ Loudness	–0.59	Acoustic songs are generally quieter than others.
+    * Instrumentalness ↔ Loudness	–0.43	Instrumental songs tend to be quieter.
+
+* Popularity shows very weak correlations with all features, meaning:
+    * Popularity cannot be explained well by audio features alone.
+    * External factors like marketing, artist reputation, playlisting, and trends likely drive popularity more than musical traits.
+    * Highest (still weak) correlations with popularity:
+        * Danceability (0.03)
+        * Loudness (0.05) → Slight preference for louder songs
+
+* Additional Observations
+    * Explicit content has no meaningful effect on popularity (correlation = 0.04).
+    * Tempo, mode, and time signature have close to zero correlation with most metrics — musical structure isn't a major differentiator.
+    * Instrumentalness is negatively related to energy and popularity, implying mainstream hits are normally non-instrumental and energetic.
  Popularity has modest positive ties to loudness/energy; acousticness is negatively related to loudness/energy; energy and loudness are strongly correlated.
 - Popularity Distribution (`plots/distribution_of_track_popularity.png`): Long tail of low-popularity tracks with a broad mid-popularity hump; few tracks exceed 70+.
 - Top Genres by Volume (`plots/top_10_genres_by_number of tracks.png`): Acoustic, electronic, j rock, reggaeton, and mandopop dominate track counts.
