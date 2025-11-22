@@ -45,68 +45,184 @@ Gradio on local host: Running on local [URL](http://127.0.0.1:7865)
 * [flagged](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/.gradio/flagged/dataset1.csv) – Sample flagged input from a previous Gradio run.
   
 ## Plot Highlights
-* Pairplot:
+* **Pairplot**
+  
   <img src="plots/pairplot.png" width="600">
+  
 Key Insights:
 1. Popularity shows no strong linear relationships
-* Scatterplots with popularity form wide clouds → no clear trend.
-* Confirms that simple linear models won’t work well.
-
+ * Scatterplots with popularity form wide clouds → no clear trend.
+ * Confirms that simple linear models won’t work well.
 2. Strong feature relationships exist between audio characteristics
-* Energy ↗ Loudness (clear strongest correlation)
-* Energy ↗ Danceability
-* Danceability ↗ Valence
-These justify creating interaction features (energy × valence, loudness × danceability).
-
+ * Energy ↗ Loudness (clear strongest correlation)
+ * Energy ↗ Danceability
+ * Danceability ↗ Valence
+ These justify the creation of interaction features (energy × valence, loudness × danceability).
 3. Several features are highly skewed
-* Acousticness, instrumentalness, and speechiness show uneven distributions.
-* They add information but are not dominant predictors.
-
-4. Some features carry very little useful signal
-* Key, mode, and time_signature appear as vertical stripes (discrete, low-variance).
-* Correct choice to drop or de-prioritize them.
-
+ * Acousticness, instrumentalness, and speechiness show uneven distributions.
+ * They add information but are not dominant predictors.
+4. Some features carry a very minimal useful signal
+ * Key, mode, and time_signature appear as vertical stripes (discrete, low-variance).
+ * Correct choice to drop or de-prioritize them.
 5. Duration and tempo show only weak relationships
-* Scatterplots reveal noisy clouds → limited influence on popularity.  
+ * Scatterplots reveal noisy clouds → limited influence on popularity.  
 
-*  Correlation Heatmap:
+*  **Correlation Heatmap**
+  
 <img src="plots/correlation_heatmap.png" width="600">
 
 Overall Interpretation: 
 The heatmap illustrates the relationship between different audio features of songs, with values ranging from –1 (strong negative correlation) to +1 (strong positive correlation). Most correlations are weak, indicating that the features are largely independent; however, there are a few notable strong relationships worth highlighting.
 
-* Key Positive Correlations (Strong/Moderate)
+1. Key Positive Correlations (Strong/Moderate)
     * Feature Pair	Correlation	Interpretation
     * Energy ↔ Loudness	0.76	Louder tracks tend to have more energy.
     * Danceability ↔ Energy	0.28	More energetic tracks are slightly more danceable.
     * Valence ↔ Danceability	0.48	More danceable songs tend to have happier/positive vibes.
     * Liveness ↔ Acousticness	0.21	More live-sounding tracks tend to be more acoustic.
-* Strong Negative Correlations
+2. Strong Negative Correlations
     * Feature Pair	Correlation	Interpretation
     * Acousticness ↔ Energy	–0.73	Highly acoustic songs are much less energetic.
     * Acousticness ↔ Loudness	–0.59	Acoustic songs are generally quieter than others.
     * Instrumentalness ↔ Loudness	–0.43	Instrumental songs tend to be quieter.
-
-* Popularity shows very weak correlations with all features, meaning:
+3. Popularity shows very weak correlations with all features, meaning:
     * Popularity cannot be explained well by audio features alone.
     * External factors like marketing, artist reputation, playlisting, and trends likely drive popularity more than musical traits.
     * Highest (still weak) correlations with popularity:
         * Danceability (0.03)
         * Loudness (0.05) → Slight preference for louder songs
-
-* Additional Observations
+4. Additional Observations
     * Explicit content has no meaningful effect on popularity (correlation = 0.04).
     * Tempo, mode, and time signature have close to zero correlation with most metrics — musical structure isn't a major differentiator.
     * Instrumentalness is negatively related to energy and popularity, implying mainstream hits are normally non-instrumental and energetic.
- Popularity has modest positive ties to loudness/energy; acousticness is negatively related to loudness/energy; energy and loudness are strongly correlated.
-- Popularity Distribution (`plots/distribution_of_track_popularity.png`): Long tail of low-popularity tracks with a broad mid-popularity hump; few tracks exceed 70+.
-- Top Genres by Volume (`plots/top_10_genres_by_number of tracks.png`): Acoustic, electronic, j rock, reggaeton, and mandopop dominate track counts.
-- Popularity by Top Genres (`plots/pupolarity_distribution_by 5_top_genres.png`): Electronic and mandopop show higher medians; reggaeton is wide-spread with many low outliers but some very high-popularity tracks.
-- Mean Feature Values (`plots/mean_audio_feature_values_by_genre_top5.png`): Reggaeton and j rock run highest on energy; acoustic leads in acousticness; electronic leads in instrumentalness.
-- Energy vs Valence (`plots/energy_vs_valence.png`): Higher popularity quantiles cluster more in high energy/valence areas but with overlap—these features alone are not decisive.
-- Duration vs Popularity (`plots/track_duration_vs_popularity.png`): Most tracks are 2–6 minutes with no strong duration effect; very long tracks are rare and not consistently popular.
-- Takeaway: Popularity is multi-factor; energy/loudness help, but genre context and danceability/valence interactions matter. Nonlinear models align with these patterns.
+
+ * **Distribution of Track Popularity**
+
+  <img src="plots/distribution_of_track_popularity.png" width="600"> 
+
+  Key Insights:
+1.  Most tracks are unpopular or unknown
+    * Over 19,000 tracks have popularity = 0, which could mean:
+    * They are newly added and haven’t been played yet.
+    * They were rarely streamed.
+    * The data source (Spotify API) couldn't retrieve popularity.
+2. Popularity has a long tail
+    * While some tracks have moderate to high popularity (20–60), very few exceed a score of 80.
+    * Suggests a small subset of tracks dominate listener attention, which aligns with real-world streaming patterns (few “hits”, many “flops”).
+3. The data is not normally distributed
+    * Important for statistical testing: you’ll need to use non-parametric tests or apply transformations if comparing features against popularity.
+      
+ *  **Energy vs Valence (sampled 5000 points) coloured by Popularity Quantile**
+   
+  <img src="plots/energy_vs_valence.png" width="600">
+
+The points are evenly spread across all areas of the plot. All four popularity levels (Low, Medium, High, Very High) are visually mixed, not clustered. There is a slightly higher concentration of “Very High” popularity tracks (red) in the top-right quadrant: High Energy + High Valence (i.e., loud AND happy music)
+
+Key Insights:
+1. High-energy, happy songs may be more popular
+    * Tracks with both high energy and high valence seem to have more Very High popularity (red) points.
+    * These could represent feel-good, danceable hits or radio-friendly tracks.
+2. Popularity is not strictly tied to audio features
+    * There are low-popularity tracks (grey) in every area, even among high-energy, high-valence music.
+    * This suggests that while audio features help, they are not the sole drivers of popularity — marketing, artist fame, and release context also matter.
+3.  Valence alone doesn’t strongly separate popularity levels
+    * Tracks with low valence (sad/melancholic) can still be popular — see red dots in the lower-right (high energy, low valence = maybe aggressive or energetic sad songs).
+      
+   * **Popularity Distribution by Top 5 Genres**
+  <img src="plots/pupolarity_distribution_by 5_top_genres.png" width="600">
+
+  Each box represents the interquartile range (IQR) of track popularity within a genre. The horizontal line inside each box is the median popularity. Whiskers show min/max (excluding outliers). Circles below the whiskers are outliers (very low popularity).
+
+Key Insights:
+1. Electronic has the highest median popularity
+    * Median is slightly higher than the others.
+    * Also shows a wide spread, including many tracks with 0 popularity.
+    * Could suggest that electronic music is broadly appealing, but also contains many niche/less played tracks.
+2. Mandopop is the most consistent genre
+    * Smallest spread of popularity.
+    * Few outliers, tighter IQR → tracks tend to perform similarly in terms of popularity.
+    * Suggests a stable, possibly regional audience.
+3. Reggaeton is highly polarized
+    * Extreme range from 0 to 100 popularity.
+    * Has both the highest max value (outlier hit) and the lowest median.
+    * Suggests that while some reggaeton tracks go viral, most remain very unpopular.
+4. J Rock and Acoustic are middle-of-the-road
+    * Median popularity is around 40–50
+    * Contains many low-popularity outliers, but not as extreme as reggaeton
+
+* **Track Duration (minutes) vs Popularity**
+  <img src="plots/track_duration_vs_popularity.png" width="600">
+
+Most tracks range from 1 to 7 minutes in duration. The highest concentration of points (especially popular ones) is between 2 and 5 minutes.
+A few outliers exist: Some tracks exceed 10, 20, or even 50 minutes, but they are not popular (mostly near 0). There's no visible linear correlation, but a clear trend in concentration.
+
+Key Insights:
+1. Popular songs cluster between 2 and 5 minutes
+    * This aligns with industry norms for radio, streaming, and attention span.
+    * Tracks outside this range (especially very long ones) are rarely popular.
+2. Tracks longer than ~7–8 minutes seldom gain popularity
+    * There are a few very long tracks, but they all have low popularity scores.
+    * These may be:
+        * Ambient, sleep, or experimental tracks
+        * Audiobooks, meditation, or niche content mislabeled as music
+3. Very short or very long songs are less successful
+    * Almost all tracks shorter than 1 minute or longer than 10 minutes have a popularity near 0.
   
+  * **Mean Audio Feature Values by Genre (Top 5 Genres)**
+      <img src="plots/mean_audio_feature_values_by_genre_top5.png" width="600">
+
+Key Insights by Feature
+1. Danceability
+    * Reggaeton has the highest danceability (expected – it's a dance genre).
+    * Electronic and mandopop also rank high.
+    * J-rock is the least danceable among the five.
+2. Energy
+    * J rock and reggaeton lead with very high energy (~0.75).
+    * Electronic also scores high.
+    * Acoustic genre has noticeably lower energy — consistent with its mellow sound.
+3. Acousticness
+    * Acoustic genre dominates here (as expected), with the highest score.
+    * All other genres have significantly lower acousticness, especially reggaeton and electronic.
+4. Valence (positivity/happiness)
+    * Reggaeton has the happiest vibe, followed by J-Rock.
+    * Mandopop shows the lowest valence (more emotionally neutral or melancholic on average).
+5. Instrumentalness
+    * Most genres have very low instrumentalness (near zero).
+    * Electronic has a noticeable spike → suggests a higher proportion of instrumental tracks.
+  
+* **Boxplots: Feature distribution by genre**
+   <img src="plots/danceability_distribution_by_genre.png" width="600">
+  <img src="plots/energy_distribution_by_genre.png" width="600">
+  <img src="plots/acousticness_distribution_by_genre.png" width="600">
+   <img src="plots/valence_distribution_by_genre.png" width="600">
+    <img src="plots/instrumentalness_distribution_by_genre.png" width="600">
+
+* Danceability Distribution by Genre
+    * Reggaeton and Electronic have the highest median danceability and less variability.
+    * J Rock shows the lowest median, with a tighter range.
+    * Acoustic and Mandopop genres show a wider spread of danceability values.
+Insight: Genres like Reggaeton and Electronic are consistently danceable, while acoustic and mandopop vary more—likely due to more subgenre diversity.
+* Energy Distribution by Genre
+    * J Rock and Electronic have the highest energy levels.
+    * Acoustic and Mandopop show a broader range, with acoustic having lower medians.
+    * Reggaeton tracks are consistently energetic but slightly lower than J-Rock.
+Insight: High-energy genres (electronic, J-rock) dominate in terms of intensity and loudness, making them suitable for high-energy environments like workouts or clubs.
+* Acousticness Distribution by Genre
+    * Acoustic genre is exactly as expected—very high acousticness.
+    * Mandopop has the second-highest median and variability.
+    * Electronic and J Rock are highly electronic (very low acousticness).
+Insight: This validates the genre labeling — acoustic tracks rely on real instruments, while electronic and j rock are more digitally produced.
+* Valence Distribution by Genre
+    * Reggaeton has the highest median valence (more cheerful/happy).
+    * Mandopop tends toward lower valence, indicating more somber or emotional tones.
+    * J Rock and Electronic are moderate.
+    * Insight: Reggaeton tends to have happier vibes; mandopop is more emotional or serious.
+* Instrumentalness Distribution by Genre
+    * Electronic is the only genre with a wide range and significant values above 0.5, indicating many tracks with little or no vocals.
+    * All other genres (including acoustic and mandopop) have low instrumentalness (mostly vocal-driven).
+Insight: Instrumental tracks are almost exclusively found in electronic music in this dataset. Other genres are mainly vocal.
+    
+ 
 ## Models and Comparison (from [ml_models.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/notebooks/ml_models.ipynb))
 - Linear Regression baseline: MAE 14.17, RMSE 19.32, R² 0.252 — weak fit, high error.
 - Random Forest (300 trees): MAE 4.86, RMSE 9.98, R² 0.801 — strongest performer in this run.
