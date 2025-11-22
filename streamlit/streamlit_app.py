@@ -114,7 +114,9 @@ def load_data(filename: str = "spotify_cleaned_data.csv") -> pd.DataFrame:
         "Place it next to app.py or in a /data or /streamlit folder."
     )
 
-
+for col in ["artists", "track_name", "track_genre", "mood_energy", "macro_genre"]:
+    if col in df.columns:
+        df[col] = df[col].apply(lambda x: "; ".join(x) if isinstance(x, list) else str(x))
 # =========================================================
 # 2. HF + LOCAL MODEL LOADER (ON DEMAND)
 # =========================================================
@@ -287,7 +289,7 @@ def main():
             df_tab1 = df_tab1[df_tab1["explicit"] == explicit_filter]
 
         st.subheader(f"Filtered Dataset ({len(df_tab1)} rows)")
-        st.dataframe(df_tab1, use_container_width=True, height=450)
+        st.dataframe(df_tab1, width="stretch", height=450)
 
         with st.expander("Summary statistics"):
             st.write(df_tab1.describe(include="all"))
@@ -328,7 +330,7 @@ def main():
                 box=True,
                 points="all",
             )
-            st.plotly_chart(fig_violin, use_container_width=True)
+            st.plotly_chart(fig_violin, width="stretch")
             st.markdown(
                 "Different mood–energy combinations show different popularity distributions."
             )
@@ -344,7 +346,7 @@ def main():
             color="macro_genre",
             opacity=0.5,
         )
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.plotly_chart(fig_scatter, width="stretch")
         st.markdown("Higher energy tracks tend to be louder, with clear genre clusters.")
 
     # -----------------------------------------------------
@@ -494,7 +496,7 @@ def main():
                 ]
                 if c in playlist.columns
             ]
-            st.dataframe(playlist[display_cols], use_container_width=True, height=400)
+            st.dataframe(playlist[display_cols], width="stretch", height=400)
 
             # Preview audio if preview_url exists
             if "preview_url" in playlist.columns:
