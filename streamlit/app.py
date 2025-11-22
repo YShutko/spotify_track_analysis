@@ -19,16 +19,17 @@ try:
     SPOTIPY_AVAILABLE = True
 except ImportError:
     SPOTIPY_AVAILABLE = False
-# ===================================================================
+# ==================================================================
 
 st.set_page_config(
     page_title="Spotify Popularity Project",
     layout="wide",
-    page_icon="🎧"
+    page_icon="🎧",
 )
 
+
 # =========================================================
-# 1. DATA LOADING + MACRO-GENRE MAPPING (BULLETPROOF)
+# 1. DATA LOADING + MACRO-GENRE MAPPING
 # =========================================================
 
 def map_macro_genre(g: str) -> str:
@@ -103,7 +104,6 @@ def load_data(filename: str = "spotify_cleaned_data.csv") -> pd.DataFrame:
 
             return df
 
-    # If file not found → raise helpful error
     st.error("❌ Could not locate the dataset file `spotify_cleaned_data.csv`!")
     st.write("Searched locations:")
     for p in search_paths:
@@ -115,18 +115,15 @@ def load_data(filename: str = "spotify_cleaned_data.csv") -> pd.DataFrame:
     )
 
 
-df = load_data()
-
-# Apply global popularity filter later; keep full df here
 # =========================================================
-# 2. BULLETPROOF HF + LOCAL MODEL LOADER
+# 2. HF + LOCAL MODEL LOADER (ON DEMAND)
 # =========================================================
 
 @st.cache_resource
 def load_models():
     """
     Load models either from local files (preferred) or from Hugging Face Hub.
-    This makes the app robust for local dev, Streamlit Cloud, Docker, HF Spaces.
+    Called only when needed (in the ML tab), not at import time.
     """
     REPO = "YShutko/spotify-popularity-models"  # HF repo id
 
@@ -155,7 +152,10 @@ def load_models():
         for d in local_dirs:
             local_path = os.path.join(d, fname)
             if os.path.isfile(local_path):
-                st.info(f"Loading **{display_name}** from local file: `{os.path.relpath(local_path)}`")
+                st.info(
+                    f"Loading **{display_name}** from local file: "
+                    f"`{os.path.relpath(local_path)}`"
+                )
                 model_obj = joblib.load(local_path)
                 break
 
@@ -166,11 +166,13 @@ def load_models():
                 model_path = hf_hub_download(
                     repo_id=REPO,
                     filename=fname,
-                    token=None,  # add token here only if the repo/files are private
+                    token=None,  # add token if repo/files are private
                 )
                 model_obj = joblib.load(model_path)
             except Exception as e:
-                st.error(f"❌ Could not load model '{display_name}' from HF Hub. Error: {e}")
+                st.error(
+                    f"❌ Could not load model '{display_name}' from HF Hub. Error: {e}"
+                )
 
         if model_obj is not None:
             models[display_name] = model_obj
@@ -183,343 +185,402 @@ def load_models():
     return models
 
 
-models = load_models()
-
 # =========================================================
-# 3. SIDEBAR (THEME + GLOBAL FILTERS)
+# 3. MAIN APP
 # =========================================================
 
-st.sidebar.title("🎧 Spotify Popularity App")
+def main():
+    # ---------- Load data ----------
+    df = load_data()
 
-theme = st.sidebar.radio("Theme", ["Light", "Dark"], index=0)
-global_min_pop = st.sidebar.slider("Global min popularity", 0, 100, 0)
+    # ---------- SIDEBAR ----------
+    st.sidebar.title("🎧 Spotify Popularity App")
 
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    "Models available:\n"
-    + "\n".join([f"- {name}" for name in models.keys()])
-)
+    theme = st.sidebar.radio("Theme", ["Light", "Dark"], index=0)
+    global_min_pop = st.sidebar.slider("Global min popularity", 0, 100, 0)
 
-if theme == "Dark":
-    st.markdown(
-        """
-        <style>
-        body { background-color: #0e1117; color: #fafafa; }
-        .stApp { background-color: #0e1117; }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(
+        "Models are loaded on demand in the **ML Prediction** tab to keep the app fast."
     )
 
-df_filtered_global = df[df["popularity"] >= global_min_pop].copy()
-
-# =========================================================
-# 4. TABS
-# =========================================================
-
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["📁 Dataset", "📊 EDA", "🤖 ML Prediction", "🎶 Playlist Builder"]
-)
-
-# ---------------------------------------------------------
-# TAB 1 – DATASET
-# ---------------------------------------------------------
-with tab1:
-    st.title("📁 Spotify Dataset Overview")
-
-    st.write(
-        "Explore the Spotify tracks by filtering on macro-genre, track genre, artist, "
-        "and explicit content. The global popularity filter in the sidebar is also applied."
-    )
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    macro_filter = col1.selectbox(
-        "Macro Genre", ["All"] + sorted(df_filtered_global["macro_genre"].dropna().unique().tolist())
-    )
-    genre_filter = col2.selectbox(
-        "Track Genre", ["All"] + sorted(df_filtered_global["track_genre"].dropna().unique().tolist())
-        if "track_genre" in df_filtered_global.columns else ["All"]
-    )
-    artist_filter = col3.selectbox(
-        "Artist", ["All"] + sorted(df_filtered_global["artists"].dropna().unique().tolist())
-        if "artists" in df_filtered_global.columns else ["All"]
-    )
-    explicit_filter = col4.selectbox("Explicit", ["All", True, False]) if "explicit" in df_filtered_global.columns else "All"
-
-    df_tab1 = df_filtered_global.copy()
-    if macro_filter != "All":
-        df_tab1 = df_tab1[df_tab1["macro_genre"] == macro_filter]
-    if genre_filter != "All" and "track_genre" in df_tab1.columns:
-        df_tab1 = df_tab1[df_tab1["track_genre"] == genre_filter]
-    if artist_filter != "All" and "artists" in df_tab1.columns:
-        df_tab1 = df_tab1[df_tab1["artists"] == artist_filter]
-    if explicit_filter != "All" and "explicit" in df_tab1.columns:
-        df_tab1 = df_tab1[df_tab1["explicit"] == explicit_filter]
-
-    st.subheader(f"Filtered Dataset ({len(df_tab1)} rows)")
-    st.dataframe(df_tab1, use_container_width=True, height=450)
-
-    with st.expander("Summary statistics"):
-        st.write(df_tab1.describe(include="all"))
-
-# ---------------------------------------------------------
-# TAB 2 – EDA
-# ---------------------------------------------------------
-with tab2:
-    st.title("📊 Exploratory Data Analysis")
-
-    st.write(
-        "Key visualizations to understand how audio features, genres and mood relate "
-        "to popularity."
-    )
-
-    # 1. Correlation heatmap
-    st.subheader("Correlation Heatmap (Numeric Features)")
-    numeric_cols = df_filtered_global.select_dtypes(include=[np.number]).columns
-    corr = df_filtered_global[numeric_cols].corr()
-
-    fig, ax = plt.subplots(figsize=(10, 7))
-    sns.heatmap(corr, cmap="coolwarm", center=0, ax=ax)
-    st.pyplot(fig)
-
-    st.markdown(
-        "- Strong positive correlation between **energy** and **loudness**.\n"
-        "- Popularity has only moderate correlations with individual audio features."
-    )
-
-    # 2. Popularity by mood/energy (if available)
-    if "mood_energy" in df_filtered_global.columns:
-        st.subheader("Popularity Distribution by Mood/Energy Group")
-        fig_violin = px.violin(
-            df_filtered_global,
-            x="mood_energy",
-            y="popularity",
-            color="mood_energy",
-            box=True,
-            points="all",
-        )
-        st.plotly_chart(fig_violin, use_container_width=True)
+    if theme == "Dark":
         st.markdown(
-            "Different mood–energy combinations show different popularity distributions."
+            """
+            <style>
+            body { background-color: #0e1117; color: #fafafa; }
+            .stApp { background-color: #0e1117; }
+            </style>
+            """,
+            unsafe_allow_html=True,
         )
 
-    # 3. Energy vs Loudness by macro-genre
-    st.subheader("Energy vs Loudness (colored by Macro Genre)")
-    fig_scatter = px.scatter(
-        df_filtered_global.sample(min(4000, len(df_filtered_global))),  # sample to keep it light
-        x="energy",
-        y="loudness",
-        color="macro_genre",
-        opacity=0.5,
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
-    st.markdown("Higher energy tracks tend to be louder, with clear genre clusters.")
+    df_filtered_global = df[df["popularity"] >= global_min_pop].copy()
 
-# ---------------------------------------------------------
-# TAB 3 – ML PREDICTION (IN-APP + GRADIO)
-# ---------------------------------------------------------
-with tab3:
-    st.title("🤖 Popularity Prediction")
-
-    st.write(
-        "Predict track popularity using different machine learning models. "
-        "Below you can either use the in-app prediction form or an embedded Gradio widget."
+    # ---------- TABS ----------
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["📁 Dataset", "📊 EDA", "🤖 ML Prediction", "🎶 Playlist Builder"]
     )
 
-    # In-app prediction form
-    st.subheader("In-app ML Prediction")
+    # -----------------------------------------------------
+    # TAB 1 – DATASET
+    # -----------------------------------------------------
+    with tab1:
+        st.title("📁 Spotify Dataset Overview")
 
-    col_a, col_b = st.columns(2)
-
-    with col_a:
-        model_choice = st.selectbox("Choose model", list(models.keys()), index=0)
-        energy = st.slider("Energy", 0.0, 1.0, 0.6, 0.01)
-        danceability = st.slider("Danceability", 0.0, 1.0, 0.6, 0.01)
-        valence = st.slider("Valence (positiveness)", 0.0, 1.0, 0.5, 0.01)
-        loudness = st.slider("Loudness (dB)", -60.0, 0.0, -8.0, 1.0)
-
-    with col_b:
-        tempo = st.slider("Tempo (BPM)", 50, 200, 120, 1)
-        explicit_val = st.selectbox("Explicit content", [False, True])
-        macro_genre_pred = st.selectbox(
-            "Macro Genre", sorted(df["macro_genre"].dropna().unique())
-        )
-        artist_pop = st.slider("Artist Popularity (baseline)", 0, 100, 50, 1)
-
-    if st.button("Predict popularity"):
-        model = models[model_choice]
-
-        sample = pd.DataFrame(
-            [
-                {
-                    "energy": energy,
-                    "danceability": danceability,
-                    "valence": valence,
-                    "loudness": loudness,
-                    "tempo": tempo,
-                    "explicit": explicit_val,
-                    "macro_genre": macro_genre_pred,
-                    "artist_popularity": artist_pop,
-                    "loudness_danceability": loudness * danceability,
-                    "energy_valence": energy * valence,
-                    "instrumentalness": 0,
-                    "acousticness": 0,
-                    "liveness": 0,
-                    "speechiness": 0,
-                    "duration_min": 3,
-                }
-            ]
+        st.write(
+            "Explore the Spotify tracks by filtering on macro-genre, track genre, artist, "
+            "and explicit content. The global popularity filter in the sidebar is also applied."
         )
 
-        pred = model.predict(sample)[0]
-        st.success(f"🎵 Predicted popularity ({model_choice}): **{pred:.1f}**")
+        col1, col2, col3, col4 = st.columns(4)
 
-    st.markdown("---")
-
-    # Embedded Gradio app (optional)
-    st.subheader("Embedded Gradio Widget")
-
-    st.write(
-        "If you have deployed a Gradio app (e.g. on HuggingFace Spaces), "
-        "you can embed it below by setting its URL."
-    )
-
-    gradio_app_url = "https://<your-gradio-space-url>"  # TODO: replace with your URL
-    if "your-gradio-space-url" not in gradio_app_url:
-        components.iframe(gradio_app_url, height=900, scrolling=True)
-    else:
-        st.info("Set `gradio_app_url` in the code to embed your Gradio app here.")
-
-# ---------------------------------------------------------
-# TAB 4 – PLAYLIST BUILDER
-# ---------------------------------------------------------
-with tab4:
-    st.title("🎶 Playlist Composer")
-
-    st.write(
-        "Build a playlist based on mood, macro-genre, energy, valence, and popularity. "
-        "You can download the playlist as CSV, and optionally send it to Spotify if configured."
-    )
-
-    c1, c2, c3 = st.columns(3)
-
-    # Mood filter (if exists)
-    if "mood_energy" in df_filtered_global.columns:
-        mood_choice = c1.selectbox(
-            "Mood/Energy Group",
-            sorted(df_filtered_global["mood_energy"].dropna().unique()),
+        macro_filter = col1.selectbox(
+            "Macro Genre",
+            ["All"]
+            + sorted(
+                df_filtered_global["macro_genre"].dropna().unique().tolist()
+            ),
         )
-        base = df_filtered_global[df_filtered_global["mood_energy"] == mood_choice]
-    else:
-        mood_choice = None
-        base = df_filtered_global.copy()
-
-    macro_choice_pl = c2.selectbox(
-        "Macro Genre (optional)",
-        ["All"] + sorted(df_filtered_global["macro_genre"].dropna().unique()),
-    )
-    if macro_choice_pl != "All":
-        base = base[base["macro_genre"] == macro_choice_pl]
-
-    min_pop_playlist = c3.slider("Min popularity", 0, 100, 40, 1)
-    base = base[base["popularity"] >= min_pop_playlist]
-
-    e_min, e_max = st.slider("Energy range", 0.0, 1.0, (0.3, 0.9), 0.01)
-    v_min, v_max = st.slider("Valence range", 0.0, 1.0, (0.3, 0.9), 0.01)
-
-    base = base[(base["energy"] >= e_min) & (base["energy"] <= e_max)]
-    base = base[(base["valence"] >= v_min) & (base["valence"] <= v_max)]
-
-    n_tracks = st.slider("Number of tracks", 1, 50, 15, 1)
-
-    if len(base) == 0:
-        st.warning("No tracks match these filters. Try relaxing the constraints.")
-        playlist = pd.DataFrame()
-    else:
-        playlist = base.sample(min(n_tracks, len(base)), random_state=42)
-
-    if not playlist.empty:
-        st.subheader("Generated Playlist")
-        display_cols = [
-            c for c in ["track_name", "artists", "popularity", "macro_genre", "mood_energy"]
-            if c in playlist.columns
-        ]
-        st.dataframe(playlist[display_cols], use_container_width=True, height=400)
-
-        # Preview audio if preview_url exists
-        if "preview_url" in playlist.columns:
-            previews = playlist["preview_url"].dropna()
-            if not previews.empty:
-                st.subheader("Preview first track")
-                st.audio(previews.iloc[0])
-            else:
-                st.info("No preview URLs available for the current playlist.")
-        else:
-            st.info("No `preview_url` column available – audio preview disabled.")
-
-        # Download CSV
-        csv_bytes = playlist.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "⬇️ Download playlist as CSV",
-            data=csv_bytes,
-            file_name="playlist.csv",
-            mime="text/csv",
+        genre_filter = col2.selectbox(
+            "Track Genre",
+            ["All"]
+            + (
+                sorted(
+                    df_filtered_global["track_genre"]
+                    .dropna()
+                    .unique()
+                    .tolist()
+                )
+                if "track_genre" in df_filtered_global.columns
+                else []
+            ),
         )
+        artist_filter = col3.selectbox(
+            "Artist",
+            ["All"]
+            + (
+                sorted(
+                    df_filtered_global["artists"]
+                    .dropna()
+                    .unique()
+                    .tolist()
+                )
+                if "artists" in df_filtered_global.columns
+                else []
+            ),
+        )
+        explicit_filter = (
+            col4.selectbox("Explicit", ["All", True, False])
+            if "explicit" in df_filtered_global.columns
+            else "All"
+        )
+
+        df_tab1 = df_filtered_global.copy()
+        if macro_filter != "All":
+            df_tab1 = df_tab1[df_tab1["macro_genre"] == macro_filter]
+        if genre_filter != "All" and "track_genre" in df_tab1.columns:
+            df_tab1 = df_tab1[df_tab1["track_genre"] == genre_filter]
+        if artist_filter != "All" and "artists" in df_tab1.columns:
+            df_tab1 = df_tab1[df_tab1["artists"] == artist_filter]
+        if explicit_filter != "All" and "explicit" in df_tab1.columns:
+            df_tab1 = df_tab1[df_tab1["explicit"] == explicit_filter]
+
+        st.subheader(f"Filtered Dataset ({len(df_tab1)} rows)")
+        st.dataframe(df_tab1, use_container_width=True, height=450)
+
+        with st.expander("Summary statistics"):
+            st.write(df_tab1.describe(include="all"))
+
+    # -----------------------------------------------------
+    # TAB 2 – EDA
+    # -----------------------------------------------------
+    with tab2:
+        st.title("📊 Exploratory Data Analysis")
+
+        st.write(
+            "Key visualizations to understand how audio features, genres and mood relate "
+            "to popularity."
+        )
+
+        # 1. Correlation heatmap
+        st.subheader("Correlation Heatmap (Numeric Features)")
+        numeric_cols = df_filtered_global.select_dtypes(include=[np.number]).columns
+        corr = df_filtered_global[numeric_cols].corr()
+
+        fig, ax = plt.subplots(figsize=(10, 7))
+        sns.heatmap(corr, cmap="coolwarm", center=0, ax=ax)
+        st.pyplot(fig)
+
+        st.markdown(
+            "- Strong positive correlation between **energy** and **loudness**.\n"
+            "- Popularity has only moderate correlations with individual audio features."
+        )
+
+        # 2. Popularity by mood/energy (if available)
+        if "mood_energy" in df_filtered_global.columns:
+            st.subheader("Popularity Distribution by Mood/Energy Group")
+            fig_violin = px.violin(
+                df_filtered_global,
+                x="mood_energy",
+                y="popularity",
+                color="mood_energy",
+                box=True,
+                points="all",
+            )
+            st.plotly_chart(fig_violin, use_container_width=True)
+            st.markdown(
+                "Different mood–energy combinations show different popularity distributions."
+            )
+
+        # 3. Energy vs Loudness by macro-genre
+        st.subheader("Energy vs Loudness (colored by Macro Genre)")
+        fig_scatter = px.scatter(
+            df_filtered_global.sample(
+                min(4000, len(df_filtered_global))
+            ),
+            x="energy",
+            y="loudness",
+            color="macro_genre",
+            opacity=0.5,
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.markdown("Higher energy tracks tend to be louder, with clear genre clusters.")
+
+    # -----------------------------------------------------
+    # TAB 3 – ML PREDICTION (IN-APP + GRADIO)
+    # -----------------------------------------------------
+    with tab3:
+        st.title("🤖 Popularity Prediction")
+
+        st.write(
+            "Predict track popularity using different machine learning models. "
+            "Below you can either use the in-app prediction form or an embedded Gradio widget."
+        )
+
+        # Try to load models only when this tab is used
+        try:
+            models = load_models()
+        except Exception as e:
+            st.error("❌ Could not load ML models.")
+            st.exception(e)
+            models = {}
+
+        if models:
+            st.subheader("In-app ML Prediction")
+
+            col_a, col_b = st.columns(2)
+
+            with col_a:
+                model_choice = st.selectbox(
+                    "Choose model", list(models.keys()), index=0
+                )
+                energy = st.slider("Energy", 0.0, 1.0, 0.6, 0.01)
+                danceability = st.slider("Danceability", 0.0, 1.0, 0.6, 0.01)
+                valence = st.slider("Valence (positiveness)", 0.0, 1.0, 0.5, 0.01)
+                loudness = st.slider("Loudness (dB)", -60.0, 0.0, -8.0, 1.0)
+
+            with col_b:
+                tempo = st.slider("Tempo (BPM)", 50, 200, 120, 1)
+                explicit_val = st.selectbox("Explicit content", [False, True])
+                macro_genre_pred = st.selectbox(
+                    "Macro Genre",
+                    sorted(df["macro_genre"].dropna().unique()),
+                )
+                artist_pop = st.slider("Artist Popularity (baseline)", 0, 100, 50, 1)
+
+            if st.button("Predict popularity"):
+                model = models[model_choice]
+
+                sample = pd.DataFrame(
+                    [
+                        {
+                            "energy": energy,
+                            "danceability": danceability,
+                            "valence": valence,
+                            "loudness": loudness,
+                            "tempo": tempo,
+                            "explicit": explicit_val,
+                            "macro_genre": macro_genre_pred,
+                            "artist_popularity": artist_pop,
+                            "loudness_danceability": loudness * danceability,
+                            "energy_valence": energy * valence,
+                            "instrumentalness": 0,
+                            "acousticness": 0,
+                            "liveness": 0,
+                            "speechiness": 0,
+                            "duration_min": 3,
+                        }
+                    ]
+                )
+
+                pred = model.predict(sample)[0]
+                st.success(f"🎵 Predicted popularity ({model_choice}): **{pred:.1f}**")
 
         st.markdown("---")
-        st.subheader("Send to Spotify (optional)")
 
-        if not SPOTIPY_AVAILABLE:
-            st.info(
-                "To enable Spotify export, install `spotipy` and configure "
-                "Spotify credentials (SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, SPOTIPY_REDIRECT_URI)."
-            )
+        # Embedded Gradio app (optional)
+        st.subheader("Embedded Gradio Widget")
+
+        st.write(
+            "If you have deployed a Gradio app (e.g. on HuggingFace Spaces), "
+            "you can embed it below by setting its URL."
+        )
+
+        gradio_app_url = "https://<your-gradio-space-url>"  # TODO: replace with your URL
+        if "your-gradio-space-url" not in gradio_app_url:
+            components.iframe(gradio_app_url, height=900, scrolling=True)
         else:
-            st.write(
-                "Define Spotify credentials as environment variables and log in "
-                "to create a playlist directly in your account."
+            st.info("Set `gradio_app_url` in the code to embed your Gradio app here.")
+
+    # -----------------------------------------------------
+    # TAB 4 – PLAYLIST BUILDER
+    # -----------------------------------------------------
+    with tab4:
+        st.title("🎶 Playlist Composer")
+
+        st.write(
+            "Build a playlist based on mood, macro-genre, energy, valence, and popularity. "
+            "You can download the playlist as CSV, and optionally send it to Spotify if configured."
+        )
+
+        c1, c2, c3 = st.columns(3)
+
+        # Mood filter (if exists)
+        if "mood_energy" in df_filtered_global.columns:
+            mood_choice = c1.selectbox(
+                "Mood/Energy Group",
+                sorted(df_filtered_global["mood_energy"].dropna().unique()),
+            )
+            base = df_filtered_global[df_filtered_global["mood_energy"] == mood_choice]
+        else:
+            mood_choice = None
+            base = df_filtered_global.copy()
+
+        macro_choice_pl = c2.selectbox(
+            "Macro Genre (optional)",
+            ["All"] + sorted(df_filtered_global["macro_genre"].dropna().unique()),
+        )
+        if macro_choice_pl != "All":
+            base = base[base["macro_genre"] == macro_choice_pl]
+
+        min_pop_playlist = c3.slider("Min popularity", 0, 100, 40, 1)
+        base = base[base["popularity"] >= min_pop_playlist]
+
+        e_min, e_max = st.slider("Energy range", 0.0, 1.0, (0.3, 0.9), 0.01)
+        v_min, v_max = st.slider("Valence range", 0.0, 1.0, (0.3, 0.9), 0.01)
+
+        base = base[(base["energy"] >= e_min) & (base["energy"] <= e_max)]
+        base = base[(base["valence"] >= v_min) & (base["valence"] <= v_max)]
+
+        n_tracks = st.slider("Number of tracks", 1, 50, 15, 1)
+
+        if len(base) == 0:
+            st.warning("No tracks match these filters. Try relaxing the constraints.")
+            playlist = pd.DataFrame()
+        else:
+            playlist = base.sample(min(n_tracks, len(base)), random_state=42)
+
+        if not playlist.empty:
+            st.subheader("Generated Playlist")
+            display_cols = [
+                c
+                for c in [
+                    "track_name",
+                    "artists",
+                    "popularity",
+                    "macro_genre",
+                    "mood_energy",
+                ]
+                if c in playlist.columns
+            ]
+            st.dataframe(playlist[display_cols], use_container_width=True, height=400)
+
+            # Preview audio if preview_url exists
+            if "preview_url" in playlist.columns:
+                previews = playlist["preview_url"].dropna()
+                if not previews.empty:
+                    st.subheader("Preview first track")
+                    st.audio(previews.iloc[0])
+                else:
+                    st.info("No preview URLs available for the current playlist.")
+            else:
+                st.info("No `preview_url` column available – audio preview disabled.")
+
+            # Download CSV
+            csv_bytes = playlist.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "⬇️ Download playlist as CSV",
+                data=csv_bytes,
+                file_name="playlist.csv",
+                mime="text/csv",
             )
 
-            spotify_username = st.text_input("Spotify username")
-            playlist_name = st.text_input("New playlist name", value="CI Spotify ML Playlist")
+            st.markdown("---")
+            st.subheader("Send to Spotify (optional)")
 
-            # Try to find a column with Spotify IDs
-            track_id_col = None
-            for cand in ["id", "track_id", "track_uri"]:
-                if cand in playlist.columns:
-                    track_id_col = cand
-                    break
-
-            if track_id_col is None:
+            if not SPOTIPY_AVAILABLE:
                 st.info(
-                    "No Spotify track ID column (`id`, `track_id` or `track_uri`) found. "
-                    "Cannot create Spotify playlist from this dataset."
+                    "To enable Spotify export, install `spotipy` and configure "
+                    "Spotify credentials (SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, SPOTIPY_REDIRECT_URI)."
                 )
             else:
-                if st.button("Create playlist on my Spotify"):
-                    try:
-                        scope = "playlist-modify-public"
-                        sp_oauth = SpotifyOAuth(scope=scope)
-                        sp = spotipy.Spotify(auth_manager=sp_oauth)
+                st.write(
+                    "Define Spotify credentials as environment variables and log in "
+                    "to create a playlist directly in your account."
+                )
 
-                        sp_playlist = sp.user_playlist_create(
-                            spotify_username,
-                            playlist_name,
-                            public=True,
-                            description="Created by Streamlit Spotify ML app",
-                        )
+                spotify_username = st.text_input("Spotify username")
+                playlist_name = st.text_input(
+                    "New playlist name", value="CI Spotify ML Playlist"
+                )
 
-                        track_ids = playlist[track_id_col].astype(str).tolist()
-                        cleaned_ids = []
-                        for tid in track_ids:
-                            if tid.startswith("spotify:track:"):
-                                cleaned_ids.append(tid)
-                            else:
-                                cleaned_ids.append("spotify:track:" + tid)
+                # Try to find a column with Spotify IDs
+                track_id_col = None
+                for cand in ["id", "track_id", "track_uri"]:
+                    if cand in playlist.columns:
+                        track_id_col = cand
+                        break
 
-                        sp.playlist_add_items(sp_playlist["id"], cleaned_ids)
-                        st.success("Playlist created on Spotify 🎉")
-                    except Exception as e:
-                        st.error("Failed to create playlist. Check credentials and permissions.")
-                        st.exception(e)
+                if track_id_col is None:
+                    st.info(
+                        "No Spotify track ID column (`id`, `track_id` or `track_uri`) found. "
+                        "Cannot create Spotify playlist from this dataset."
+                    )
+                else:
+                    if st.button("Create playlist on my Spotify"):
+                        try:
+                            scope = "playlist-modify-public"
+                            sp_oauth = SpotifyOAuth(scope=scope)
+                            sp = spotipy.Spotify(auth_manager=sp_oauth)
+
+                            sp_playlist = sp.user_playlist_create(
+                                spotify_username,
+                                playlist_name,
+                                public=True,
+                                description="Created by Streamlit Spotify ML app",
+                            )
+
+                            track_ids = playlist[track_id_col].astype(str).tolist()
+                            cleaned_ids = []
+                            for tid in track_ids:
+                                if tid.startswith("spotify:track:"):
+                                    cleaned_ids.append(tid)
+                                else:
+                                    cleaned_ids.append("spotify:track:" + tid)
+
+                            sp.playlist_add_items(sp_playlist["id"], cleaned_ids)
+                            st.success("Playlist created on Spotify 🎉")
+                        except Exception as e:
+                            st.error(
+                                "Failed to create playlist. Check credentials and permissions."
+                            )
+                            st.exception(e)
+
+
+# =========================================================
+# ENTRYPOINT
+# =========================================================
+
+if __name__ == "__main__":
+    main()
