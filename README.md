@@ -2,7 +2,7 @@
 <img src="assets/cbacd32f-cd5a-4c3f-8b46-eba4db5f3425.png" width="300">
 </p>
 
-# Spotify Track Analytics
+# Spotify Track Analysis and Popularity Prediction
 
 Music platforms receive tens of thousands of new tracks every day. Playlist curators, A&R teams, and recommendation algorithms must decide:
     * which songs are likely to resonate?
