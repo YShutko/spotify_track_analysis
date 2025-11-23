@@ -4,7 +4,20 @@
 
 # Spotify Track Analytics
 
-Analyze ~114k Spotify tracks to understand what drives popularity, explore mood/genre patterns, and prototype lightweight prediction tools for playlist building or A&R triage.
+Music platforms receive tens of thousands of new tracks every day. Playlist curators, A&R teams, and recommendation algorithms must decide:
+    * which songs are likely to resonate?
+    * what tracks deserve promotion?
+    * which hidden gems might perform well?
+
+By analyzing audio features, artist signals, and genre traits, we can gain a deeper understanding of what drives a track’s popularity and build models to forecast performance.
+
+This project delivers:
+    * full dataset exploration
+    * feature engineering
+    * ML modeling
+    * interactive user tools (Streamlit app)
+    * a playlist builder
+    * production-ready deployment (HuggingFace + Streamlit Cloud)
 
 ## SPOTIFY POPULARITY PREDICTOR (GRADIO DEMO)
 
@@ -13,11 +26,41 @@ Gradio on local host: Running on local [URL](http://127.0.0.1:7865)
 ## Spotify Popularity App (Streamlit)
 The [App](https://huggingface.co/spaces/YShutko/spotify-popularity-app) was deployed on Hugging Face
 
-## Business Problems and Goals
-- What audio and metadata signals most influence a track’s popularity score (0–100)?
-- Can we quickly triage large catalogs to surface likely hits or candidate tracks for playlists?
-- How do energy/valence/danceability differ by macro-genre, and where are outliers worth A&R follow-up?
-- Deliver simple, reproducible tooling (notebook widgets + Gradio demo) that product or data teams can test with minimal setup.
+## Business Requirements & Solutions (
+
+**Business Requirements**
+
+1. Understand what drives a track’s popularity (0–100):Identify which audio features, metadata, and derived attributes (energy, valence, loudness, macro-genre, explicit content, etc.) most strongly affect popularity.
+2.  Enable scalable triage of large track catalogs: Support A&R, playlist editors, or product teams in quickly surfacing promising tracks without listening to entire catalogs.
+3.  Highlight genre-level differences in mood, energy, and acoustic properties: Provide actionable comparisons across macro-genres to reveal standout songs or anomalies.
+4. Deliver lightweight, reproducible tools for experimentation: Provide notebooks, interactive widgets, and web apps (Gradio/Streamlit) that can be tested without complex setup.
+
+**Solutions Implemented**
+
+1. Exploratory Data Analysis (EDA)
+    * Detailed profiling of audio features
+    * Correlation analysis (energy ↗ loudness, acousticness ↘ energy)
+    * Genre-level comparisons using boxplots and summary stats
+    * Identification of distributions, skew, and weak/strong signals
+
+2. Feature Engineering
+    
+    Created interaction terms and proxies that improved predictive power, including:
+    * energy_valence
+    * loudness_danceability
+    * artist_popularity (aggregated proxy)
+    * Macro-genre grouping: Supported by insights discovered in EDA.
+
+3. Machine Learning Models
+    * Baseline: Linear Regression (poor fit, establishes complexity requirement)
+    * Random Forest: strong non-linear performance
+    * XGBoost (tuned): competitive with RF, highly regularized. Achieved R² ≈ 0.80, MAE ≈ 5, indicating high predictive power on audio + proxy metadata.
+
+4. Interactive Tools
+    * ipywidgets notebook → quick in-notebook experimentation
+    * Gradio app → simple shareable model demos
+    * Streamlit app → complete workflow: dataset viewer, ML prediction, playlist builder
+Together, these tools satisfy the goal of rapid experimentation with minimal friction.
 
 ## Data
 - Source: [Kaggle – Spotify Tracks Dataset](https://www.kaggle.com/datasets/maharshipandya/-spotify-tracks-dataset)
@@ -50,7 +93,36 @@ The [App](https://huggingface.co/spaces/YShutko/spotify-popularity-app) was depl
 * [ipywidgets.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/ipywidgets.ipynb) – In-notebook prediction widget (sliders/dropdowns) using downloaded models.
 * [gradio.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/gradio.ipynb) – Gradio UI for quick web demos (multiple downloadable models).
 * [flagged](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/models_widgets/.gradio/flagged/dataset1.csv) – Sample flagged input from a previous Gradio run.
-  
+
+## Hypotheses
+These guided the analysis and were tested through EDA and ML modeling.
+
+H1 — Popular tracks have higher energy, valence, and danceability.
+
+Partially supported:
+Some popularity clusters exist, but correlations are weak — audio traits alone cannot fully predict success.
+
+H2 — Interaction features carry more predictive power than single features.
+
+Supported:
+energy_valence and loudness_danceability improved accuracy across non-linear models.
+
+H3 — Genre significantly influences popularity.
+
+Partially supported:
+Genres differ in mood distributions, but genre alone is not predictive.
+
+H4 — Artist popularity is the strongest single predictor.
+
+Strongly supported:
+Tracks from already popular artists are consistently higher in popularity.
+
+H5 — Popularity can be predicted using non-linear models + engineered features.
+
+Supported:
+Random Forest and XGBoost achieved high performance; Linear Regression failed.
+
+
 ## Plot Highlights
 * **Pairplot**
   
@@ -350,11 +422,42 @@ README.md
 
 Deployment
 
-Compatible with:
+Compatible with HuggingFace Spaces and Streamlit Cloud
 
-HuggingFace Spaces
+## Architecture Diagram
 
-Streamlit Cloud
+                 ┌─────────────────────┐
+                 │   Raw Spotify Data   │
+                 └───────────┬─────────┘
+                             │
+                             ▼
+                 ┌─────────────────────┐
+                 │   Data Cleaning &   │
+                 │   Feature Engineering│
+                 └───────────┬─────────┘
+                             │
+                   ┌─────────┴─────────┐
+                   │                   │
+                   ▼                   ▼
+       ┌──────────────────┐   ┌───────────────────┐
+       │   EDA Analysis    │   │ Machine Learning  │
+       │ (notebook/plots) │   │ (RF, XGBoost, LR) │
+       └─────────┬────────┘   └─────────┬─────────┘
+                 │                      │
+                 ▼                      ▼
+       ┌──────────────────┐    ┌──────────────────────┐
+       │   Insights        │    │ HF Model Repository  │
+       │ (EDA results)    │    │  (model.pkl files)   │
+       └─────────┬────────┘    └─────────┬────────────┘
+                 │                      │
+                 ▼                      ▼
+          ┌────────────────────────────────────┐
+          │         Streamlit Application       │
+          │  - Dataset Viewer                   │
+          │  - Prediction UI                    │
+          │  - Playlist Builder                 │
+          └────────────────────────────────────┘
+
 
 ## Summary of key findings
 - Popularity is predictable with tree-based models using standard audio features; RF and tuned XGB achieve MAE ≈ 5–5.1 and R² ≈ 0.80 on this dataset.
@@ -366,6 +469,23 @@ Streamlit Cloud
 2) Run [Spotify_track_analysis.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/notebooks/Spotify_track_analysis.ipynb) to explore distributions, correlations, and genre-level mood/energy patterns.
 3) Train and compare models in [ml_models.ipynb](https://github.com/YShutko/CI_spotify_track_analysis/blob/3c1d5b469e04c4a46cf01e3d99477fac8d672044/notebooks/ml_models.ipynb); focus on RF vs tuned XGB.
 4) Demo predictions with the ipywidgets notebook or the Gradio app for stakeholder feedback.
+
+## Limitations & Next Steps
+
+**Limitations**
+    * Track popularity is influenced by marketing, social media, artist fame, playlist placement — none of which are in the dataset.
+    * Audio features alone have limited predictive power (R² ~0.80 only with engineered features and non-linear models).
+    * Playlist builder does not include Spotify audio previews or live API search.
+    * Genre mapping is rule-based (not ML-driven).
+
+**Next Steps**
+    * Add lyrics embeddings (BERT) for deeper semantic analysis
+    * Integrate Spotify API for real-time track lookup
+    * Add audio previews in the Streamlit playlist builder
+    * Introduce time-based features (release year, trends)
+    * Create a model comparison dashboard
+    * Add explainability using SHAP
+    * Deploy on both HuggingFace and Streamlit Cloud
 
 ## Analysis techniques used
 
@@ -392,3 +512,4 @@ Streamlit Cloud
 * [Kaggle – Spotify Tracks Dataset](https://www.kaggle.com/datasets/maharshipandya/-spotify-tracks-dataset)
 
 
+ 
