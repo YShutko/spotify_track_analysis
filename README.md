@@ -30,10 +30,10 @@ The [App](https://huggingface.co/spaces/YShutko/spotify-popularity-app) was depl
 
 **Business Requirements**
 
-1. Understand what drives a track’s popularity (0–100):Identify which audio features, metadata, and derived attributes (energy, valence, loudness, macro-genre, explicit content, etc.) most strongly affect popularity.
+1. Understand what drives a track’s popularity (0–100): Identify which audio features, metadata, and derived attributes (energy, valence, loudness, macro-genre, explicit content, etc.) most strongly affect popularity.
 2.  Enable scalable triage of large track catalogs: Support A&R, playlist editors, or product teams in quickly surfacing promising tracks without listening to entire catalogs.
 3.  Highlight genre-level differences in mood, energy, and acoustic properties: Provide actionable comparisons across macro-genres to reveal standout songs or anomalies.
-4. Deliver lightweight, reproducible tools for experimentation: Provide notebooks, interactive widgets, and web apps (Gradio/Streamlit) that can be tested without complex setup.
+4. Deliver lightweight, reproducible tools for experimentation: Provide notebooks, interactive widgets, and web apps (Gradio/Streamlit) that can be tested without a complex setup.
 
 **Solutions Implemented**
 
@@ -110,7 +110,7 @@ energy_valence and loudness_danceability improved accuracy across non-linear mod
 H3 — Genre significantly influences popularity.
 
 Partially supported:
-Genres differ in mood distributions, but genre alone is not predictive.
+Genres differ in mood distributions, but genre alone is not a reliable predictor.
 
 H4 — Artist popularity is the strongest single predictor.
 
@@ -313,7 +313,7 @@ Model Description: Linear Regression predicts popularity as a weighted linear co
 Model:
 * Simple, transparent baseline
 * Shows whether popularity can be explained linearly
-* Coefficients allow easy interpretatio
+* Coefficients allow easy interpretation
 
 Performance: MAE: ~14.17. R²: ~0.25
 
