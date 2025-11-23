@@ -383,6 +383,7 @@ Streamlit Cloud
 * Matplotlib
 * scikit-learn
 * gradio
+* streamlit
 
 ### Resources:
 
